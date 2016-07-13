@@ -11,7 +11,7 @@ import java.util.concurrent.Phaser;
  */
 public class Simulator {
 	
-		   ExecutorService 	pool 			= Executors.newFixedThreadPool(25); // thread executor pool to run philosopher threads.
+	static ExecutorService 	pool 			= Executors.newFixedThreadPool(25); // thread executor pool to run philosopher threads.
 	static boolean[] 		TableFull 		= {true,true,true,true,true};    // status of the tables.
 	static int 				position6 		= 0;	
 	static Spoon[][] 		objSpoons;	// spoon objects
@@ -62,9 +62,9 @@ public class Simulator {
 				if(TableFull[i] && tableDeadlock(i)==true)
 					changeTable(i);
 			simulationGuard.arriveAndAwaitAdvance(); /** let other threads to proceed. **/
-			
 			simulatorTime++;
 
+// 			for debug print
 //			System.out.println(simulatorTime);
 //			for(int i =0;i<25;i++)
 //				if(objPhilosopher[i].getTable()==5)
@@ -75,11 +75,19 @@ public class Simulator {
 //				break;
 		
 		}
+
+		stopThreads(5);
+
+		/** Clear up the two barriers within the threads while loop **/
+		simulationGuard.arriveAndAwaitAdvance(); 
+		simulationGuard.arriveAndAwaitAdvance(); 
+		pool.shutdownNow();
 		
 		/** print Final result **/
 		System.out.println("Deadlock occur at "+simulatorTime+" second");
 		System.out.printf("The last philosophers moved to sixth table was %c",65+lastMove);
-		
+		// Debug: System.out.println("Active Threads: "+Thread.activeCount());
+		return;
 	}
 	
 	/** 

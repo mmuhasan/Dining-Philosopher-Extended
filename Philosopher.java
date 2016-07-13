@@ -70,6 +70,7 @@ public class Philosopher
 	 */
 	public void stopThread() {
 		t.kill();
+//		t = null;
 	}
 	
 	/**
@@ -153,66 +154,67 @@ public class Philosopher
  * The thread that represent a philosopher
  * @author mmuhasan
  */
-class PhilosopierThread extends Thread {
-					 Phaser 			Guard;				/** a phaser to synchronize with the simulated clock */
-	private volatile boolean 			isRunning = true;   
-					 Philosopher 		objPhilosopher;		/** the instances of the phiolosopher **/
-					 PhilosopherState 	state;
-	   
-	/** constructor **/
-	PhilosopierThread(Philosopher pho,Phaser p)
-	{
-		objPhilosopher	=pho;
-		Guard 			= p;
-		
-		Guard.register();
-	}
-	   
-	@Override
-	public void run()
-	{
-		objPhilosopher.thinkIng();
-		Guard.arriveAndAwaitAdvance(); // wait until every other thread is ready to start.
-		
-		while(isRunning)  // run the thread until it asked to be shut down.
+	class PhilosopierThread extends Thread {
+						 Phaser 			Guard;				/** a phaser to synchronize with the simulated clock */
+		private volatile boolean 			isRunning = true;   
+						 Philosopher 		objPhilosopher;		/** the instances of the phiolosopher **/
+						 PhilosopherState 	state;
+		   
+		/** constructor **/
+		PhilosopierThread(Philosopher pho,Phaser p)
 		{
-			state = objPhilosopher.getStatus(); // the current status of the philosopher and take action based on it.
-			switch(state){
+			objPhilosopher	=pho;
+			Guard 			= p;
 			
-			case THINKING:
-				if(objPhilosopher.timeLeft==0)
-					objPhilosopher.PickSpoon();
-				else objPhilosopher.timeLeft--;
-				break;
-			case WAITING_FOR_FORK:
-				objPhilosopher.PickSpoon();	
-				break;
-			case WAITING_ON_SYSTEM:
-				if(objPhilosopher.timeLeft==0)
-					objPhilosopher.PickSpoon();
-				else objPhilosopher.timeLeft--; 
-				break;
-			case EATING:
-				if(objPhilosopher.timeLeft==0)
-					objPhilosopher.reset();
-				else objPhilosopher.timeLeft--;
-			}
-	    	  
-			Guard.arriveAndAwaitAdvance();
-			/**
-			 * waiting for master thread to finish checking 
-			 * deadlocks and checking necessary action.
-			 */
-			Guard.arriveAndAwaitAdvance();
+			Guard.register();
 		}
-		Guard.arriveAndDeregister();
-		      
+		   
+		@Override
+		public void run()
+		{
+			objPhilosopher.thinkIng();
+			Guard.arriveAndAwaitAdvance(); // wait until every other thread is ready to start.
+			
+			while(isRunning)  // run the thread until it asked to be shut down.
+			{
+				state = objPhilosopher.getStatus(); // the current status of the philosopher and take action based on it.
+				switch(state){
+				
+				case THINKING:
+					if(objPhilosopher.timeLeft==0)
+						objPhilosopher.PickSpoon();
+					else objPhilosopher.timeLeft--;
+					break;
+				case WAITING_FOR_FORK:
+					objPhilosopher.PickSpoon();	
+					break;
+				case WAITING_ON_SYSTEM:
+					if(objPhilosopher.timeLeft==0)
+						objPhilosopher.PickSpoon();
+					else objPhilosopher.timeLeft--; 
+					break;
+				case EATING:
+					if(objPhilosopher.timeLeft==0)
+						objPhilosopher.reset();
+					else objPhilosopher.timeLeft--;
+				}
+		    	  
+				Guard.arriveAndAwaitAdvance();
+				/**
+				 * waiting for master thread to finish checking 
+				 * deadlocks and taking necessary action.
+				 */
+				Guard.arriveAndAwaitAdvance();
+			}
+			Guard.arriveAndDeregister();
+			//Debug:	System.out.println("Thread for Philosopier "+objPhilosopher.idPhilosopher+" closing");
+			return;
+		}
+	
+		/** finish the thread **/
+		public void kill() 
+		{ 
+			isRunning= false;
+		}
+	
 	}
-
-	/** finish the thread **/
-	public void kill() 
-	{ 
-		isRunning= false;
-	}
-
-}
