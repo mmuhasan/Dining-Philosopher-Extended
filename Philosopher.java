@@ -3,16 +3,27 @@ package assognment3;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Phaser;
 
+/**
+ * A class to represent a Philosopher
+ * @author mmuhasan
+ */
 public class Philosopher 
 {
-	int 				timeLeft;
-	int 				idPhilosopher;
-	int 				idTable;
-	int 				position;
-	Phaser 				guard;
+	int 				timeLeft;	/** Keep track of time of the 
+										work the philosopher on at 
+										any given time. **/
+	int 				idPhilosopher; /** id of philosopher that use for their name */
+	int 				idTable;	/** the table id where the philosopher sit at 
+										any given time. **/ 
+	int 				position; /** the position in the table where the philosopher sit at 
+									any given time. **/
+	Phaser 				guard;	/** a Phaser that allow threads to be synchronized 
+									with the simulated clock **/
 	PhilosopherState 	state;
-	PhilosopierThread 	t;
-	int					spoonHold;
+	PhilosopierThread 	t;		/** the thread that simulate the philosopher. **/
+	int					spoonHold; /** keep track of how many spoon a phiolosophier is currently holding **/
+	
+	/** constructor */
 	public Philosopher(int i, Phaser simulationGuard, ExecutorService pool) 
 	{
 		idPhilosopher 	= i;
@@ -24,28 +35,47 @@ public class Philosopher
 		pool.execute(t);		
 	}
 	
+	/** Start thinking */
 	public void thinkIng()
 	{
 		state 		= PhilosopherState.THINKING;
 		timeLeft	= MyRandom.thinkIngTime();
 	}
 	
+	/**
+	 * @return the table id
+	 */
 	public int getTable() {
 		return idTable;
 	}
+	
+	/**
+	 * The philosopher move to the sixth table 
+	 */
 	public void changeTable(int position6) {
 		reset();
 		idTable = 5;
 		position = position6;
 	}
+	
+	/**
+	 * @return what the philosopher is currently doing.
+	 */
 	public PhilosopherState getStatus() {
 		return state;
 	}
 
+	/**
+	 * Stop a philosopher thread.
+	 */
 	public void stopThread() {
 		t.kill();
+//		t = null;
 	}
 	
+	/**
+	 * Picking up the left spoon.
+	 */
 	private boolean takeLeftSpoon()
 	{
 		int iPosition = position-1;
@@ -54,11 +84,17 @@ public class Philosopher
 		return Simulator.objSpoons[idTable][iPosition].take();
 	}
 	
+	/**
+	 * Picking up the right spoon.
+	 */
 	private boolean takeRightSpoon(){
 
 		return Simulator.objSpoons[idTable][position].take();
 	}
 
+	/**
+	 * Picking up the a spoon (left or right)
+	 */
 	public void PickSpoon() {
 		if(spoonHold==0){
 			if(takeLeftSpoon())
@@ -88,14 +124,21 @@ public class Philosopher
 		}
 	}
 
+	/** 
+	 * reset the status of the philosopher
+	 * Reset the relevant spoon status 
+	 * and start thinking
+	 **/
 	public void reset() 
 	{
 		int iPosition = position-1;
 		if(position==0)
 			iPosition = 4;
 		
-		Simulator.objSpoons[idTable][iPosition].leave();
-		Simulator.objSpoons[idTable][position].leave();
+		if(spoonHold > 0)
+			Simulator.objSpoons[idTable][iPosition].leave();
+		if(spoonHold == 2)	
+			Simulator.objSpoons[idTable][position].leave();
 		spoonHold = 0;
 		
 		thinkIng();
@@ -107,62 +150,71 @@ public class Philosopher
 	}
 }
 
-class PhilosopierThread extends Thread {
-					 Phaser 			Guard;
-	private volatile boolean 			isRunning = true;
-					 Philosopher 		objPhilosopher;
-					 PhilosopherState 	state;
-	   
-	PhilosopierThread(Philosopher pho,Phaser p)
-	{
-		objPhilosopher	=pho;
-		Guard 			= p;
-		
-		Guard.register();
-	}
-	   
-	public void run()
-	{
-		objPhilosopher.thinkIng();
-		Guard.arriveAndAwaitAdvance();
-		while(isRunning) 
+/**
+ * The thread that represent a philosopher
+ * @author mmuhasan
+ */
+	class PhilosopierThread extends Thread {
+						 Phaser 			Guard;				/** a phaser to synchronize with the simulated clock */
+		private volatile boolean 			isRunning = true;   
+						 Philosopher 		objPhilosopher;		/** the instances of the phiolosopher **/
+						 PhilosopherState 	state;
+		   
+		/** constructor **/
+		PhilosopierThread(Philosopher pho,Phaser p)
 		{
-			state = objPhilosopher.getStatus();
-			switch(state){
+			objPhilosopher	=pho;
+			Guard 			= p;
 			
-			case THINKING:
-				if(objPhilosopher.timeLeft==0)
-					objPhilosopher.PickSpoon();
-				else objPhilosopher.timeLeft--;
-				break;
-			case WAITING_FOR_FORK:
-				objPhilosopher.PickSpoon();	
-				break;
-			case WAITING_ON_SYSTEM:
-				if(objPhilosopher.timeLeft==0)
-					objPhilosopher.PickSpoon();
-				else objPhilosopher.timeLeft--; 
-				break;
-			case EATING:
-				if(objPhilosopher.timeLeft==0)
-					objPhilosopher.reset();
-				else objPhilosopher.timeLeft--;
-			}
-	    	  
-			Guard.arriveAndAwaitAdvance();
-			/**
-			 * waiting for master thread to finish checking 
-			 * deadlocks and checking necessary action.
-			 */
-			Guard.arriveAndAwaitAdvance();
+			Guard.register();
 		}
-		Guard.arriveAndDeregister();
-		      
+		   
+		@Override
+		public void run()
+		{
+			objPhilosopher.thinkIng();
+			Guard.arriveAndAwaitAdvance(); // wait until every other thread is ready to start.
+			
+			while(isRunning)  // run the thread until it asked to be shut down.
+			{
+				state = objPhilosopher.getStatus(); // the current status of the philosopher and take action based on it.
+				switch(state){
+				
+				case THINKING:
+					if(objPhilosopher.timeLeft==0)
+						objPhilosopher.PickSpoon();
+					else objPhilosopher.timeLeft--;
+					break;
+				case WAITING_FOR_FORK:
+					objPhilosopher.PickSpoon();	
+					break;
+				case WAITING_ON_SYSTEM:
+					if(objPhilosopher.timeLeft==0)
+						objPhilosopher.PickSpoon();
+					else objPhilosopher.timeLeft--; 
+					break;
+				case EATING:
+					if(objPhilosopher.timeLeft==0)
+						objPhilosopher.reset();
+					else objPhilosopher.timeLeft--;
+				}
+		    	  
+				Guard.arriveAndAwaitAdvance();
+				/**
+				 * waiting for master thread to finish checking 
+				 * deadlocks and taking necessary action.
+				 */
+				Guard.arriveAndAwaitAdvance();
+			}
+			Guard.arriveAndDeregister();
+			//Debug:	System.out.println("Thread for Philosopier "+objPhilosopher.idPhilosopher+" closing");
+			return;
+		}
+	
+		/** finish the thread **/
+		public void kill() 
+		{ 
+			isRunning= false;
+		}
+	
 	}
-
-	public void kill() 
-	{ 
-		isRunning= false;
-	}
-
-}
